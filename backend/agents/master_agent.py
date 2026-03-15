@@ -1,13 +1,13 @@
 import traceback
 
-from agents.role_agents import role_agent
-from agents.skill_extractor_agent import skill_extractor_agent
-from agents.ats_agent import ats_agent
-from agents.roadmap_agent import roadmap_agent
-from agents.project_agent import project_agent
-from agents.resume_agent import resume_agent
-from agents.job_agent import job_agent
-from agents.interview_agent import interview_agent
+from backend.agents.role_agents import role_agent
+from backend.agents.skill_extractor_agent import skill_extractor_agent
+from backend.agents.ats_agent import ats_agent
+from backend.agents.roadmap_agent import roadmap_agent
+from backend.agents.project_agent import project_agent
+from backend.agents.resume_agent import resume_agent
+from backend.agents.job_agent import job_agent
+from backend.agents.interview_agent import interview_agent
 
 from utils.skill_gap_engine import compute_skill_gap
 
@@ -68,7 +68,7 @@ def master_agent(resume_text: str, role: str):
         # ---------------- ATS SCORING ----------------
         try:
             print("Running ATS Agent...")
-            ats_result = ats_agent(
+            ats_result = agents.ats_agent.ats_agent(
                 resume_text=resume_text,
                 role_profile=role_profile,
                 role=role
