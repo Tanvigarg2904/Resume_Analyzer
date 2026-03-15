@@ -2,140 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SkillForge AI Pro</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Role Fit Compass</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
+  <body>
 
-  <h2 class="logo">CareerPilot</h2>
-  
+  <div class="app-layout">
 
-  <nav>
-    <a href="#dashboard" class="active">Dashboard</a>
-    <a href="#jobs">Jobs</a>
-    <a href="#roadmap">Roadmap</a>
-    <a href="#projects">Projects</a>
-    <a href="#settings">Settings</a>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+
+  <!-- Logo -->
+  <div class="sidebar-header">
+    <div class="logo-icon">
+      🧠
+    </div>
+    <span class="logo-text">Career Intel</span>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+    <a href="#/dashboard" data-path="/dashboard">Dashboard</a>
+    <a href="#/" data-path="/">Upload Resume</a>
+    <a href="#/role-match" data-path="/role-match">Role Match</a>
+    <a href="#/skill-gap" data-path="/skill-gap">Skill Gap</a>
+    <a href="#/jobs" data-path="/jobs">Jobs</a>
+    <a href="#/projects" data-path="/projects">Projects</a>
+    <a href="#/roadmap" data-path="/roadmap">Roadmap</a>
+    <a href="#/interview" data-path="/interview">Interview Prep</a>
   </nav>
-  <footer>CareerPilot - Your Career Companion</footer>
+
+  <!-- Footer -->
+  <div class="sidebar-footer">
+    <a href="#/settings" data-path="/settings">Settings</a>
+    <button id="collapseBtn">Collapse</button>
+  </div>
+
 </aside>
 
-<!-- MAIN -->
-<main class="main">
+    <!-- Main Content -->
+    <main class="main-content">
+      <div id="app"></div>
+    </main>
 
-  <!-- HERO -->
-  <section class="hero" id="dashboard">
-    <h1>Build Your Career Path</h1>
-    <p>Resume → Role → ATS → Jobs → Roadmap → Projects</p>
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-inner">
 
-    <div class="upload-box">
-      <input id="role" placeholder="Target Role (e.g. Data Scientist)" />
-      <input type="file" id="resume"/>
-      <button onclick="analyze()">Analyze Resume</button>
-    </div>
+    <a href="#/dashboard" data-path="/dashboard" class="bottom-link">
+      <div class="icon">📊</div>
+      <span>Dashboard</span>
+      <div class="active-indicator"></div>
+    </a>
 
-    <div id="status" class="status"></div>
-  </section>
+    <a href="#/role-match" data-path="/role-match" class="bottom-link">
+      <div class="icon">🎯</div>
+      <span>Role</span>
+      <div class="active-indicator"></div>
+    </a>
 
-  <!-- DASHBOARD GRID -->
-  <section class="grid">
-    
+    <a href="#/jobs" data-path="/jobs" class="bottom-link">
+      <div class="icon">💼</div>
+      <span>Jobs</span>
+      <div class="active-indicator"></div>
+    </a>
 
+    <a href="#/projects" data-path="/projects" class="bottom-link">
+      <div class="icon">💻</div>
+      <span>Projects</span>
+      <div class="active-indicator"></div>
+    </a>
 
-    <!-- ATS -->
-<div class="card glass">
+    <a href="#/settings" data-path="/settings" class="bottom-link">
+      <div class="icon">⚙️</div>
+      <span>Settings</span>
+      <div class="active-indicator"></div>
+    </a>
 
-  <!-- ATS CIRCLE -->
-  <div class="ats-ring" id="ats">0%</div>
+  </div>
+</nav>
 
-  <!-- ATS BAR -->
-  <div class="ats-bar">
-    <div id="ats-fill"></div>
   </div>
 
-  <!-- CONFIDENCE -->
-  <div id="confidence" class="confidence">Analyzing...</div>
-
-  <h3>ATS Score</h3>
-
-  <!-- SNAPSHOT -->
-  <div id="snapshot" class="snapshot"></div>
-
-</div>
-
-
-    <!-- MATCHED -->
-    <div class="card glass">
-      <h3>Matched Skills</h3>
-      <div id="skills" class="pills"></div>
-    </div>
-
-    <!-- CORE -->
-    <div class="card glass">
-      <h3>Core Role Skills</h3>
-      <div id="core-skills" class="pills"></div>
-    </div>
-
-    <!-- GAPS -->
-    <div class="card glass">
-      <h3>Critical Gaps</h3>
-      <ul id="gaps"></ul>
-    </div>
-
-  </section>
-
-  <!-- JOBS -->
-  <section class="section glass" id="jobs">
-    <h2>Recommended Jobs</h2>
-    <div class="job-filters">
- <span class="filter active" onclick="filterJobs('all')">All</span>
- <span class="filter" onclick="filterJobs('intern')">Internship</span>
- <span class="filter" onclick="filterJobs('remote')">Remote</span>
- <span class="filter" onclick="filterJobs('full')">Fulltime</span>
-</div>
-
-    <div id="jobs-list" class="job-list skeleton"></div>
-  </section>
-
-  <!-- ROADMAP -->
-<section id="roadmap" class="section glass">
-  <h2>90 Day Roadmap</h2>
-
-  <div id="roadmap-content" class="timeline">
-    <div class="timeline-item">
-      <div class="dot" aria-hidden="true"></div>
-      <div class="timeline-card" id="month1"><!-- month1 content injected here --></div>
-    </div>
-
-    <div class="timeline-item">
-      <div class="dot" aria-hidden="true"></div>
-      <div class="timeline-card" id="month2"><!-- month2 content injected here --></div>
-    </div>
-
-    <div class="timeline-item">
-      <div class="dot" aria-hidden="true"></div>
-      <div class="timeline-card" id="month3"><!-- month3 content injected here --></div>
-    </div>
-  </div>
-</section>
-
-
-
-
-  <!-- PROJECTS -->
-  <section class="section glass" id="projects">
-    <h2>Portfolio Projects</h2>
-    <div id="projects-list" class="project-list skeleton"></div>
-  </section>
-
-</main>
-
-<script src="script.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

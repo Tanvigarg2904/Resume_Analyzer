@@ -1,110 +1,138 @@
+import os
 import requests
 from dotenv import load_dotenv
-from groq import Groq
-import os, re, json
 
 load_dotenv()
 
 SERP_API_KEY = os.getenv("SERPAPI_KEY")
-llm = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-# 1️⃣ Get dynamic core skills based on role
-def get_role_skills(role: str):
+# ---------------------------------------------------------
+# Detect job type
+# ---------------------------------------------------------
+def detect_job_type(job):
 
-    prompt = f"""
-You are a technical recruiter.
+    title = job.get("title", "").lower()
+    desc = job.get("description", "").lower()
+    location = job.get("location", "").lower()
 
-Given the job role: "{role}",
-list 8–12 core technical skills required for this role.
+    if "intern" in title or "internship" in desc:
+        return "Internship"
 
-Return ONLY a JSON array of strings.
-No explanation. No markdown.
+    if "remote" in title or "remote" in desc:
+        return "Remote"
 
-Example:
-["skill1","skill2","skill3"]
-"""
+    if "work from home" in desc or "wfh" in desc:
+        return "Work From Home"
 
-    response = llm.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        temperature=0.2,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    raw = response.choices[0].message.content
-    raw = re.sub(r"```.*?\n", "", raw)
-    raw = re.sub(r"```", "", raw)
-
-    try:
-        return json.loads(raw)
-    except:
-        # Safe fallback
-        return role.lower().split()
+    return "Full Time"
 
 
-# 2️⃣ Score each job using ATS logic
-def score_job(job_text: str, resume_text: str, role: str):
-
-    core_skills = get_role_skills(role)
-
-    resume = resume_text.lower()
-    job = job_text.lower()
-
-    matched = []
-    missing = []
-
-    for skill in core_skills:
-        s = skill.lower()
-        if s in job and s in resume:
-            matched.append(skill)
-        elif s in job:
-            missing.append(skill)
-
-    # ATS scoring logic (simple but effective)
-    score = min(95, max(25, len(matched) * 12))
-
-    return score, matched, missing
-
-
-# 3️⃣ Job agent with ATS-ranked results
-def job_agent(role: str, resume_text: str, location="India"):
+# ---------------------------------------------------------
+# Job Agent
+# ---------------------------------------------------------
+def job_agent(role, resume_text, location="India"):
 
     if not SERP_API_KEY:
-        return []
+        print("SERPAPI_KEY missing")
+        return {
+            "internships": [],
+            "remote": [],
+            "work_from_home": [],
+            "full_time": []
+        }
 
     params = {
         "engine": "google_jobs",
-        "q": f"{role} internship",
+        "q": f"{role} internship fresher",
         "location": location,
         "api_key": SERP_API_KEY
     }
 
-    res = requests.get("https://serpapi.com/search.json", params=params)
-    data = res.json()
+    response = requests.get(
+        "https://serpapi.com/search.json",
+        params=params
+    )
 
-    ranked_jobs = []
+    data = response.json()
 
-    for j in data.get("jobs_results", [])[:10]:
+    print("SERP Jobs Found:", len(data.get("jobs_results", [])))
 
+    jobs = []
+
+    for job in data.get("jobs_results", [])[:20]:
+
+        title = job.get("title", "")
+        company = job.get("company_name", "")
+        location = job.get("location", "")
+        description = job.get("description", "")
+
+        # -------------------------------------------------
+        # Extract apply link
+        # -------------------------------------------------
         apply_link = ""
-        if j.get("apply_options"):
-            apply_link = j["apply_options"][0].get("link", "")
 
-        description = j.get("description", "")
+        apply_options = job.get("apply_options", [])
 
-        score, matched, missing = score_job(description, resume_text, role)
+        if apply_options:
+            apply_link = apply_options[0].get("link", "")
 
-        ranked_jobs.append({
-            "title": j.get("title", ""),
-            "company": j.get("company_name", ""),
-            "location": j.get("location", ""),
-            "link": apply_link,
-            "match_score": score,
-            "matched_skills": matched,
-            "missing_skills": missing
+        if not apply_link:
+            related = job.get("related_links", [])
+            if related:
+                apply_link = related[0].get("link", "")
+
+        # fallback link
+        if not apply_link:
+            apply_link = "https://www.google.com/search?q=" + title.replace(" ", "+")
+
+        salary = job.get(
+            "detected_extensions",
+            {}
+        ).get("salary", "Not specified")
+
+        job_type = detect_job_type(job)
+
+        jobs.append({
+            "job_title": title,
+            "company": company,
+            "location": location,
+            "job_type": job_type,
+            "salary_range": salary,
+            "apply_link": apply_link,
+            "description": description[:200],
+            "match_percentage": 70,
+            "reason": "Matches your selected role",
+            "missing_requirements": []
         })
 
-    # 4️⃣ Sort by ATS match
-    ranked_jobs.sort(key=lambda x: x["match_score"], reverse=True)
+    # ---------------------------------------------------------
+    # Group jobs by category
+    # ---------------------------------------------------------
+    grouped_jobs = {
+        "internships": [],
+        "remote": [],
+        "work_from_home": [],
+        "full_time": []
+    }
 
-    return ranked_jobs
+    for job in jobs:
+
+        if job["job_type"] == "Internship":
+            grouped_jobs["internships"].append(job)
+
+        elif job["job_type"] == "Remote":
+            grouped_jobs["remote"].append(job)
+
+        elif job["job_type"] == "Work From Home":
+            grouped_jobs["work_from_home"].append(job)
+
+        else:
+            grouped_jobs["full_time"].append(job)
+
+    print("Internships:", len(grouped_jobs["internships"]))
+    print("Remote:", len(grouped_jobs["remote"]))
+    print("Work From Home:", len(grouped_jobs["work_from_home"]))
+    print("Full Time:", len(grouped_jobs["full_time"]))
+
+    return grouped_jobs

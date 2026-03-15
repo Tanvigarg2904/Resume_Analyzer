@@ -1,113 +1,164 @@
-import os, json, re
-from groq import Groq
-from dotenv import load_dotenv
+import traceback
 
-load_dotenv()
+from agents.role_agents import role_agent
+from agents.skill_extractor_agent import skill_extractor_agent
+from agents.ats_agent import ats_agent
+from agents.roadmap_agent import roadmap_agent
+from agents.project_agent import project_agent
+from agents.resume_agent import resume_agent
+from agents.job_agent import job_agent
+from agents.interview_agent import interview_agent
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-SYSTEM = """
-You are SkillForge AI Pro.
-
-You simulate:
-- FAANG Recruiter
-- ATS Scanner
-- Hiring Manager
-- Career Strategist
-
-Return STRICT JSON ONLY.
-No markdown.
-No explanations.
-No comments.
-No ``` blocks.
-"""
-
-def force_json(raw: str) -> str:
-    raw = raw.strip()
-    raw = re.sub(r"```json", "", raw)
-    raw = re.sub(r"```", "", raw)
-
-    start = raw.find("{")
-    end = raw.rfind("}") + 1
-
-    return raw[start:end]
+from utils.skill_gap_engine import compute_skill_gap
 
 
-def master_agent(resume: str, role: str) -> dict:
+def master_agent(resume_text: str, role: str):
 
-    PROMPT = f"""
-Target Role: {role}
+    print("\n===== MASTER AGENT STARTED =====")
 
-Return JSON exactly in this schema:
-
-{{
- "ats_score": number,
- "snapshot": {{
-   "role_fit": "",
-   "seniority": "",
-   "readiness": ""
- }},
- "skills": {{
-   "matched": [],
-   "missing": []
- }},
- "gaps": [],
- "roadmap": {{
-   "month1": [],
-   "month2": [],
-   "month3": []
- }},
- "projects": [
-   {{"title": "", "description": ""}}
- ]
-}}
-
-Rules:
-- ats_score realistic (30–80)
-- gaps must block internships
-- roadmap achievable in 90 days
-- projects industry aligned
-- JSON ONLY
-
-Resume:
-{resume}
-"""
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": PROMPT}
-        ]
-    )
-
-    raw = response.choices[0].message.content
-    cleaned = force_json(raw)
+    result = {
+        "target_role": role,
+        "role_profile": {},
+        "extracted_skills": {},
+        "skill_gap": [],
+        "ats_score": 0,
+        "matched_skills": [],
+        "missing_core_skills": [],
+        "learning_roadmap": [],
+        "recommended_projects": [],
+        "recommended_jobs": [],
+        "resume_improvements": [],
+        "interview_questions": []
+    }
 
     try:
-        return json.loads(cleaned)
 
-    except Exception:
-        print("\n⚠️ RAW MODEL OUTPUT (INVALID JSON):\n", raw)
+        # ---------------- ROLE PROFILE ----------------
+        try:
+            print("Running Role Agent...")
+            role_profile = role_agent(role)
+            result["role_profile"] = role_profile
+        except Exception as e:
+            print("Role Agent Failed:", e)
+            traceback.print_exc()
+            role_profile = {}
 
-        # ⛑️ FAILSAFE — NEVER CRASH API
-        return {
-            "ats_score": 0,
-            "snapshot": {
-                "role_fit": "Parsing Error",
-                "seniority": "",
-                "readiness": ""
-            },
-            "skills": {
-                "matched": [],
-                "missing": []
-            },
-            "gaps": ["LLM returned malformed JSON"],
-            "roadmap": {
-                "month1": [],
-                "month2": [],
-                "month3": []
-            },
-            "projects": []
-        }
+        # ---------------- SKILL EXTRACTION ----------------
+        try:
+            print("Running Skill Extractor...")
+            skills_data = skill_extractor_agent(resume_text)
+            result["extracted_skills"] = skills_data
+            user_skills = skills_data.get("all_skills", [])
+        except Exception as e:
+            print("Skill Extractor Failed:", e)
+            traceback.print_exc()
+            user_skills = []
+
+        # ---------------- SKILL GAP ----------------
+        try:
+            print("Running Skill Gap Engine...")
+            skill_gap = compute_skill_gap(role_profile, user_skills)
+            result["matched_skills"] = skill_gap.get("matched_skills", [])
+            result["missing_core_skills"] = skill_gap.get("missing_skills", [])
+            result["skill_graph"] = skill_gap.get("skill_graph",[])
+        except Exception as e:
+            print("Skill Gap Engine Failed:", e)
+            traceback.print_exc()
+
+        # ---------------- ATS SCORING ----------------
+        try:
+            print("Running ATS Agent...")
+            ats_result = ats_agent(
+                resume_text=resume_text,
+                role_profile=role_profile,
+                role=role
+            )
+
+            result["ats_score"] = ats_result.get("ats_score", 0)
+            result["matched_skills"] = ats_result.get("matched_skills", [])
+            result["missing_core_skills"] = ats_result.get("missing_core_skills", [])
+
+        except Exception as e:
+            print("ATS Agent Failed:", e)
+            traceback.print_exc()
+
+        matched_skills = result["matched_skills"]
+        missing_skills = result["missing_core_skills"]
+
+        # ---------------- ROADMAP ----------------
+        try:
+            print("Running Roadmap Agent...")
+            roadmap = roadmap_agent(
+                role=role,
+                matched_skills=matched_skills,
+                missing_skills=missing_skills
+            )
+
+            result["learning_roadmap"] = roadmap
+        except Exception as e:
+            print("Roadmap Agent Failed:", e)
+            traceback.print_exc()
+
+        # ---------------- PROJECTS ----------------
+        try:
+            print("Running Project Agent...")
+            projects = project_agent(
+                role=role,
+                matched_skills=matched_skills,
+                missing_skills=missing_skills
+            )
+
+            result["recommended_projects"] = projects.get("recommended_projects", [])
+        except Exception as e:
+            print("Project Agent Failed:", e)
+            traceback.print_exc()
+
+        # ---------------- RESUME IMPROVEMENTS ----------------
+        try:
+            print("Running Resume Agent...")
+            resume_improvements = resume_agent(
+                resume_text=resume_text,
+                role=role
+            )
+
+            result["resume_improvements"] = resume_improvements.get("resume_improvements", [])
+        except Exception as e:
+            print("Resume Agent Failed:", e)
+            traceback.print_exc()
+
+        # ---------------- JOBS ----------------
+        try:
+            print("Running Job Agent...")
+            jobs = job_agent(
+                role=role,
+                resume_text=resume_text
+            )
+
+            result["recommended_jobs"] = jobs
+        except Exception as e:
+            print("Job Agent Failed:", e)
+            traceback.print_exc()
+
+        # ---------------- INTERVIEW QUESTIONS ----------------
+        try:
+            print("Running Interview Agent...")
+            interview_questions = interview_agent(
+                role=role,
+                skills=user_skills
+            )
+
+            result["interview_questions"] = interview_questions.get("interview_questions", [])
+        except Exception as e:
+            print("Interview Agent Failed:", e)
+            traceback.print_exc()
+
+        print("===== MASTER AGENT COMPLETED =====\n")
+
+        return result
+
+    except Exception as e:
+
+        print("MASTER AGENT CRITICAL ERROR:", e)
+        traceback.print_exc()
+
+        return result
