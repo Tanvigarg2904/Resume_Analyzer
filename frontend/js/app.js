@@ -17,7 +17,7 @@
   const formData = new FormData();
   formData.append("file", file);
   formData.append("role", role);
-  const res = await fetch("http://127.0.0.1:8000/analyze", {
+  const res = await fetch("https://resume-analyzer-zji2.onrender.com/analyze", {
    method: "POST",
    body: formData
   });
@@ -1035,7 +1035,7 @@ role:"user",
 content:message
 });
 
-const response = await fetch("http://127.0.0.1:8000/interview-chat",{
+const response = await fetch("https://resume-analyzer-zji2.onrender.com/interview-chat",{
 
 method:"POST",
 
