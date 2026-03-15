@@ -5,9 +5,9 @@ from pypdf import PdfReader
 from pydantic import BaseModel
 from typing import List,Optional,Dict
 
-from agents.master_agent import master_agent
-from agents.interview_chat_agent import interview_chat_agent
-from agents.skill_extractor_agent import skill_extractor_agent
+from backend.agents.master_agent import master_agent
+from backend.agents.interview_chat_agent import interview_chat_agent
+from backend.agents.skill_extractor_agent import skill_extractor_agent
 
 
 app = FastAPI()
