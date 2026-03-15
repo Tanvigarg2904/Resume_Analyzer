@@ -3,3 +3,10 @@ uvicorn[standard]
 python-multipart
 groq
 pydantic
+pypdf
+python-dotenv
+requests
+aiofiles
+httpx
+jinja2
+typing-extensions
