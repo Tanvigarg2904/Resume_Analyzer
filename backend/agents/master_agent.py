@@ -9,7 +9,7 @@ from backend.agents.resume_agent import resume_agent
 from backend.agents.job_agent import job_agent
 from backend.agents.interview_agent import interview_agent
 
-from utils.skill_gap_engine import compute_skill_gap
+from backend.utils.skill_gap_engine import compute_skill_gap
 
 
 def master_agent(resume_text: str, role: str):
