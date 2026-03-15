@@ -68,7 +68,7 @@ def master_agent(resume_text: str, role: str):
         # ---------------- ATS SCORING ----------------
         try:
             print("Running ATS Agent...")
-            ats_result = agents.ats_agent.ats_agent(
+            ats_result = ats_agent(
                 resume_text=resume_text,
                 role_profile=role_profile,
                 role=role
